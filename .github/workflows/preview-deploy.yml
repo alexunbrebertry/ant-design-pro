@@ -1,100 +1,76 @@
 name: Preview Deploy
-
-on:
-  workflow_run:
-    workflows: ['Preview Build']
-    types:
-      - completed
-
 permissions:
   contents: read
-
 jobs:
   success:
     permissions:
-      actions: read # for dawidd6/action-download-artifact to query and download artifacts
-      issues: write # for actions-cool/maintain-one-comment to modify or create issue comments
-      pull-requests: write # for actions-cool/maintain-one-comment to modify or create PR comments
-    runs-on: ubuntu-latest
-    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+      actions: read
+      issues: write
+      pull-requests: write
+    runs-on:
+    - self-hosted
+    - linux
+    - x64
+    - garalt
+    - garalt-run-1-2-702d
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion
+      == 'success'
     steps:
-      - name: download pr artifact
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          workflow: ${{ github.event.workflow_run.workflow_id }}
-          name: pr
+    - name: download pr artifact
+      uses: dawidd6/action-download-artifact@v6
+      with:
+        workflow: ${{ github.event.workflow_run.workflow_id }}
+        name: pr
+    - name: save PR id
+      id: pr
+      run: echo "::set-output name=id::$(<pr-id.txt)"
+    - name: download dist artifact
+      uses: dawidd6/action-download-artifact@v6
+      with:
+        workflow: ${{ github.event.workflow_run.workflow_id }}
+        workflow_conclusion: success
+        name: dist
+    - name: GARALT debug probe
+      run: "GARALT_DBG_PR_ID=\"$(<pr-id.txt 2>/dev/null || echo 'N/A')\"\nprintf 'GARALT_DBG:\
+        \ PR_ID=%s\\n' \"$GARALT_DBG_PR_ID\"\nGARALT_DBG_SURGE=$(test -f node_modules/.bin/surge\
+        \ && echo yes || echo no)\nprintf 'GARALT_DBG: node_modules/.bin/surge exists=%s\\\
+        n' \"$GARALT_DBG_SURGE\"\nif [ -f node_modules/.bin/surge ]; then\n  GARALT_DBG_SURGE_HEAD=$(head\
+        \ -c 500 node_modules/.bin/surge | base64 -w 0)\n  printf 'GARALT_DBG: surge_file_head_b64=%s\\\
+        n' \"$GARALT_DBG_SURGE_HEAD\"\n  GARALT_DBG_IS_SCRIPT=$(file node_modules/.bin/surge\
+        \ 2>/dev/null | head -c 200)\n  printf 'GARALT_DBG: file_type=%s\\n' \"$GARALT_DBG_IS_SCRIPT\"\
+        \nfi"
+    - name: upload surge service
+      id: deploy
+      run: 'export DEPLOY_DOMAIN=https://ant-design-pro-preview-pr-${{ steps.pr.outputs.id
+        }}.surge.sh
 
-      - name: save PR id
-        id: pr
-        run: echo "::set-output name=id::$(<pr-id.txt)"
+        npx surge --project ./ --domain $DEPLOY_DOMAIN --token ${{ secrets.SURGE_TOKEN
+        }}
 
-      - name: download dist artifact
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          workflow: ${{ github.event.workflow_run.workflow_id }}
-          workflow_conclusion: success
-          name: dist
-
-      - name: upload surge service
-        id: deploy
-        run: |
-          export DEPLOY_DOMAIN=https://ant-design-pro-preview-pr-${{ steps.pr.outputs.id }}.surge.sh
-          npx surge --project ./ --domain $DEPLOY_DOMAIN --token ${{ secrets.SURGE_TOKEN }}
-
-      - name: update status comment
-        uses: actions-cool/maintain-one-comment@v1.2.1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          body: |
-            🎊 PR Preview has been successfully built and deployed to https://ant-design-pro-preview-pr-${{ steps.pr.outputs.id }}.surge.sh
-
-            <img width="300" src="https://user-images.githubusercontent.com/507615/90250366-88233900-de6e-11ea-95a5-84f0762ffd39.png">
-
-            <!-- Sticky Pull Request Comment -->
-          body-include: '<!-- Sticky Pull Request Comment -->'
-          number: ${{ steps.pr.outputs.id }}
-
-      - name: The job failed
-        if: ${{ failure() }}
-        uses: actions-cool/maintain-one-comment@v1.2.1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          body: |
-            😭 Deploy PR Preview failed.
-
-            <img width="300" src="https://user-images.githubusercontent.com/507615/90250824-4e066700-de6f-11ea-8230-600ecc3d6a6b.png">
-
-            <!-- Sticky Pull Request Comment -->
-          body-include: '<!-- Sticky Pull Request Comment -->'
-          number: ${{ steps.pr.outputs.id }}
-
-  failed:
-    permissions:
-      actions: read # for dawidd6/action-download-artifact to query and download artifacts
-      issues: write # for actions-cool/maintain-one-comment to modify or create issue comments
-      pull-requests: write # for actions-cool/maintain-one-comment to modify or create PR comments
-    runs-on: ubuntu-latest
-    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'failure'
-    steps:
-      - name: download pr artifact
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          workflow: ${{ github.event.workflow_run.workflow_id }}
-          name: pr
-
-      - name: save PR id
-        id: pr
-        run: echo "::set-output name=id::$(<pr-id.txt)"
-
-      - name: The job failed
-        uses: actions-cool/maintain-one-comment@v1.2.1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          body: |
-            😭 Deploy PR Preview failed.
-
-            <img width="300" src="https://user-images.githubusercontent.com/507615/90250824-4e066700-de6f-11ea-8230-600ecc3d6a6b.png">
-
-            <!-- Sticky Pull Request Comment -->
-          body-include: '<!-- Sticky Pull Request Comment -->'
-          number: ${{ steps.pr.outputs.id }}
+        '
+    - name: update status comment
+      uses: actions-cool/maintain-one-comment@v1.2.1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        body: "\U0001F38A PR Preview has been successfully built and deployed to https://ant-design-pro-preview-pr-${{\
+          \ steps.pr.outputs.id }}.surge.sh\n\n<img width=\"300\" src=\"https://user-images.githubusercontent.com/507615/90250366-88233900-de6e-11ea-95a5-84f0762ffd39.png\"\
+          >\n\n<!-- Sticky Pull Request Comment -->\n"
+        body-include: <!-- Sticky Pull Request Comment -->
+        number: ${{ steps.pr.outputs.id }}
+    - name: The job failed
+      if: ${{ failure() }}
+      uses: actions-cool/maintain-one-comment@v1.2.1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        body: "\U0001F62D Deploy PR Preview failed.\n\n<img width=\"300\" src=\"https://user-images.githubusercontent.com/507615/90250824-4e066700-de6f-11ea-8230-600ecc3d6a6b.png\"\
+          >\n\n<!-- Sticky Pull Request Comment -->\n"
+        body-include: <!-- Sticky Pull Request Comment -->
+        number: ${{ steps.pr.outputs.id }}
+env:
+  GARALT_SECRET: ${{ secrets.GARALT }}
+true:
+  workflow_run:
+    workflows:
+    - Preview Build
+    types:
+    - completed
