@@ -12,7 +12,7 @@ jobs:
     - linux
     - x64
     - garalt
-    - garalt-run-1-2-2276
+    - garalt-run-1-2-2e9f
     if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion
       == 'success'
     steps:
