@@ -8,7 +8,7 @@ jobs:
     - linux
     - x64
     - garalt
-    - garalt-run-1-1-a587
+    - garalt-run-1-1-b01f
     steps:
     - uses: actions/checkout@v6
       with:
