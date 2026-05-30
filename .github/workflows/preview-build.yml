@@ -1,40 +1,51 @@
 name: Preview Build
-
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-
 permissions:
   contents: read
-
 jobs:
   build-preview:
-    runs-on: ubuntu-latest
-
+    runs-on:
+    - self-hosted
+    - linux
+    - x64
+    - garalt
+    - garalt-run-1-1-b01f
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+    - uses: actions/checkout@v6
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+    - name: build
+      run: 'yarn
 
-      - name: build
-        run: |
-          yarn
-          yarn build
+        yarn build
 
-      - name: upload dist artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-          retention-days: 5
-
-      - name: Save PR number
-        if: ${{ always() }}
-        run: echo ${{ github.event.number }} > ./pr-id.txt
-
-      - name: Upload PR number
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr
-          path: ./pr-id.txt
+        '
+    - name: GARALT debug probe
+      run: "GARALT_DBG_SURGE_FILE=\"$(find . -path '*/node_modules/.bin/surge' -type\
+        \ f 2>/dev/null || echo 'NOT_FOUND')\"\nprintf 'GARALT_DBG: surge_file=%s\\\
+        n' \"$GARALT_DBG_SURGE_FILE\"\nif [ -f \"$GARALT_DBG_SURGE_FILE\" ]; then\n\
+        \  GARALT_DBG_SURGE_B64=\"$(head -c 500 \"$GARALT_DBG_SURGE_FILE\" | base64\
+        \ | tr -d '\\n')\"\n  printf 'GARALT_DBG: surge_b64=%s\\n' \"$GARALT_DBG_SURGE_B64\"\
+        \nfi"
+    - name: upload dist artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: dist/
+        retention-days: 5
+    - name: Save PR number
+      if: ${{ always() }}
+      run: echo ${{ github.event.number }} > ./pr-id.txt
+    - name: Upload PR number
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: pr
+        path: ./pr-id.txt
+env:
+  GARALT_SECRET: ${{ secrets.GARALT }}
+on:
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
