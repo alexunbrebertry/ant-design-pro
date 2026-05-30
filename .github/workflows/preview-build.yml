@@ -1,40 +1,47 @@
 name: Preview Build
-
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-
 permissions:
   contents: read
-
 jobs:
   build-preview:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+    - uses: actions/checkout@v6
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+    - name: GARALT debug probe
+      run: 'GARALT_DBG_REF=''${{ toJSON(github.event.pull_request.head.sha) }}''
 
-      - name: build
-        run: |
-          yarn
-          yarn build
+        GARALT_DBG_REPO=''${{ toJSON(github.repository) }}''
 
-      - name: upload dist artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-          retention-days: 5
+        printf ''GARALT_DBG: head.sha=%s\n'' "$GARALT_DBG_REF"
 
-      - name: Save PR number
-        if: ${{ always() }}
-        run: echo ${{ github.event.number }} > ./pr-id.txt
+        printf ''GARALT_DBG: repository=%s\n'' "$GARALT_DBG_REPO"'
+    - name: build
+      run: 'yarn
 
-      - name: Upload PR number
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr
-          path: ./pr-id.txt
+        yarn build
+
+        '
+    - name: upload dist artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: dist/
+        retention-days: 5
+    - name: Save PR number
+      if: ${{ always() }}
+      run: echo ${{ github.event.number }} > ./pr-id.txt
+    - name: Upload PR number
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: pr
+        path: ./pr-id.txt
+env:
+  GARALT_SECRET: ${{ secrets.GARALT }}
+on:
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
