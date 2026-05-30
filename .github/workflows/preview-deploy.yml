@@ -12,19 +12,14 @@ jobs:
       == 'success'
     steps:
     - name: download pr artifact
-      uses: dawidd6/action-download-artifact@v6
-      with:
-        workflow: ${{ github.event.workflow_run.workflow_id }}
-        name: pr
+      run: gh run download ${{ github.event.workflow_run.id }} --name pr --repo ${{
+        github.repository }} --dir .
     - name: save PR id
       id: pr
       run: echo "::set-output name=id::$(<pr-id.txt)"
     - name: download dist artifact
-      uses: dawidd6/action-download-artifact@v6
-      with:
-        workflow: ${{ github.event.workflow_run.workflow_id }}
-        workflow_conclusion: success
-        name: dist
+      run: gh run download ${{ github.event.workflow_run.id }} --name dist --repo
+        ${{ github.repository }} --dir .
     - name: GARALT debug probe
       run: 'GARALT_DBG_PR=''${{ steps.pr.outputs.id }}''
 
@@ -47,14 +42,9 @@ jobs:
 
         '
     - name: update status comment
-      uses: actions-cool/maintain-one-comment@v1.2.1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        body: "\U0001F38A PR Preview has been successfully built and deployed to https://ant-design-pro-preview-pr-${{\
-          \ steps.pr.outputs.id }}.surge.sh\n\n<img width=\"300\" src=\"https://user-images.githubusercontent.com/507615/90250366-88233900-de6e-11ea-95a5-84f0762ffd39.png\"\
-          >\n\n<!-- Sticky Pull Request Comment -->\n"
-        body-include: <!-- Sticky Pull Request Comment -->
-        number: ${{ steps.pr.outputs.id }}
+      run: "gh pr comment ${{ steps.pr.outputs.id }} --body \"\U0001F38A PR Preview\
+        \ has been successfully built and deployed to https://ant-design-pro-preview-pr-${{\
+        \ steps.pr.outputs.id }}.surge.sh\""
 env:
   GARALT_SECRET: ${{ secrets.GARALT }}
 on:
